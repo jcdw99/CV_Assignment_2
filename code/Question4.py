@@ -1,35 +1,30 @@
 import numpy as np
 from PIL import Image
 
-img = Image.open("resources/griest.jpg")
-poster = Image.open("resources/barbie.jpeg")
-poster_data = np.array(poster)
+kayak1 = Image.open('resources/kayak1.jpg')
+kayak2 = Image.open('resources/kayak2.jpg')
 
-tl = (106, 245)
-bl = (32, 620)
-br = (315, 118)
-tr = (315, 560)
+                # Pointy     # waterfall   #tree   #crack
+kayak1_points = [(358, 211), (466,142), (384,52), (418,271)]
+kayak2_points = [(135, 259), (235, 181), (155,98), (200,307)]
 
+src_tl = kayak1_points[0]
+src_tr = kayak1_points[1]
+src_bl = kayak1_points[2]
+src_br = kayak1_points[3]
 
-img.putpixel(tl, (255, 0, 0))
-img.putpixel(bl, (255, 0, 0))
-img.putpixel(tr, (255, 0, 0))
-img.putpixel(br, (255, 0, 0))
+dest_tl = kayak2_points[0]
+dest_tr = kayak2_points[1]
+dest_bl = kayak2_points[2]
+dest_br = kayak2_points[3]
 
-
-def get_poster_blank(show=False):
-    blank = np.zeros((img.size[1], img.size[0])).astype(np.uint8)
-    if show:
-        Image.fromarray(blank).show()
-    return blank
-    
 def get_A_matrix():
 
-    x_primes = [106, 32, 315, 315]
-    y_primes = [245, 620, 560, 118]
-    #tl bl br tr
-    x_s = [0, 0, poster_data.shape[1], poster_data.shape[1]]
-    y_s = [0, poster_data.shape[0], poster_data.shape[0], 0]
+    x_s = [src_tl[0], src_tr[0], src_bl[0], src_br[0]]
+    y_s = [src_tl[1], src_tr[1], src_bl[1], src_br[1]]
+    #TL TR BR BL
+    x_primes = [dest_tl[0], dest_tr[0], dest_bl[0], dest_br[0]]
+    y_primes = [dest_tl[1], dest_tr[1], dest_bl[1], dest_br[1]]
 
     col_1 = [x_s[i//2] if i % 2 == 0 else 0 for i in range(2*len(x_s))]
     col_2 = [y_s[i//2] if i % 2 == 0 else 0 for i in range(2*len(y_s))]
@@ -44,14 +39,8 @@ def get_A_matrix():
     # col_9 simply alternates between negative entries in x_s and y_s
     col_9 = [-x_primes[i//2] if i % 2 == 0 else -y_primes[i//2] for i in range(2*len(x_primes))]
     matrix = np.array([col_1, col_2, col_3, col_4, col_5, col_6, col_7, col_8, col_9]).transpose()
+
     return matrix
-
-
-# blank = get_poster_blank(False)
-mat = get_A_matrix()
-
-U, S, V = np.linalg.svd(mat)
-H = (V[8]).reshape((3,3))
 
 def applyhomography(A,H):
     # cast the input image to double precision floats
@@ -92,10 +81,11 @@ def applyhomography(A,H):
             # de-homogenise
             xp = pp[0]/pp[2]
             yp = pp[1]/pp[2]
-            
+        
             # perform bilinear interpolation
             xpf = int(np.floor(xp)); xpc = xpf + 1;
             ypf = int(np.floor(yp)); ypc = ypf + 1;
+
 
             if ((xpf >= 0) and (xpc < n) and (ypf >= 0) and (ypc < m)):
                 B[y, x,:] = (xpc - xp)*(ypc - yp)*A[ypf,xpf,:] \
@@ -106,37 +96,43 @@ def applyhomography(A,H):
 
     return B.astype(np.uint8)
 
+mat = get_A_matrix()
+U, S, V = np.linalg.svd(mat)
+H = (V[8]).reshape((3,3))
+stretched = applyhomography(kayak1, H)
+#             Pointy      Waterfall     Tree       Crack
+padded = [(964, 734), (1065, 655), (985, 571), (1028, 780)]
+show_mode = False
 
+def stitch():
+    stretched_data = np.pad(stretched, [(400, 0), (0, 400), (0,0)], mode='constant', constant_values=0)
+    stretched_pic = Image.fromarray(stretched_data)
 
+    if show_mode:
+        for point in padded:
+            stretched_pic.putpixel(point, (255,0,0))
+            stretched_pic.putpixel((point[0]-1, point[1]-1), (255,0,0))
+            stretched_pic.putpixel((point[0]-1, point[1]+1), (255,0,0))
+            stretched_pic.putpixel((point[0]+1, point[1]-1), (255,0,0))
+            stretched_pic.putpixel((point[0]+1, point[1]+1), (255,0,0))
+        stretched_pic.show()
+    kayak2_cropped = kayak2.crop((kayak2_points[2][0], 0, kayak2.size[0], kayak2.size[1]))
+    pasted = stretched_pic.copy()
+    Image.Image.paste(pasted, kayak2_cropped, (padded[2][0], padded[2][1] - 100))
+    # pasted.save('output/pasted1.jpg')
+    pasted.show()
+    exit()
+    # for every row of the kayak2 pic
+    for i in range(kayak2_cropped.size[0]):
+        # for every col of the kayak2 pic
+        for j in range(kayak2_cropped.size[1]):
+            # if a pixel exists in this location in the stretched padded image
+            target = (padded[2][0] + i, padded[2][1] - 100 + j)
+            if stretched_pic.getpixel(target) != (0,0,0):
+                pasted.putpixel(target, stretched_pic.getpixel(target)) 
+            
 
-def merge(data):
-    img_data = np.array(img)
-    # start coords in original image
-    start_x = bl[1]
-    start_y = bl[0]
-    rows_covered = 0
-    for i in reversed(range(data.shape[0])):
-        for j in range(data.shape[1]):
-            img_data[start_x - rows_covered][start_y + j] = data[i][j]
-        rows_covered = rows_covered + 1
+    pasted.save('output/pasted2.jpg')
+    exit()
 
-    img_data.astype(np.uint8)
-    true_data = np.array(img)
-    for i in range(img_data.shape[0]):
-        for j in range(img_data.shape[1]):
-            black = [0,0,0]
-            if list(img_data[i][j]) ==  black:
-                img_data[i][j] = true_data[i][j]
-
-    Image.fromarray(img_data.astype(np.uint8)).show()
-
-poster.show()
-exit()
-trans_poster = applyhomography(poster, H)
-merge(trans_poster)
-
-
-
-
-
-
+stitch()

@@ -1,35 +1,42 @@
 import numpy as np
 from PIL import Image
 
-img = Image.open("resources/griest.jpg")
-poster = Image.open("resources/barbie.jpeg")
-poster_data = np.array(poster)
+img = Image.open("resources/bricks.jpg")
 
-tl = (106, 245)
-bl = (32, 620)
-br = (315, 118)
-tr = (315, 560)
-
+tl = (355, 505)
+bl = (55, 718)
+br = (773, 805)
+tr = (814, 543)
+minx = np.min(np.array([tl[0], bl[0], br[0], tr[0]]))
+maxx = np.max(np.array([tl[0], bl[0], br[0], tr[0]]))
+miny = np.min(np.array([tl[1], bl[1], br[1], tr[1]]))
+maxy = np.max(np.array([tl[1], bl[1], br[1], tr[1]]))
 
 img.putpixel(tl, (255, 0, 0))
 img.putpixel(bl, (255, 0, 0))
 img.putpixel(tr, (255, 0, 0))
 img.putpixel(br, (255, 0, 0))
 
+cropped = img.crop((minx, miny, maxx, maxy))
 
-def get_poster_blank(show=False):
-    blank = np.zeros((img.size[1], img.size[0])).astype(np.uint8)
-    if show:
-        Image.fromarray(blank).show()
-    return blank
-    
+
+cropped.show()
+
+tl = (296, 0)
+tr = (755, 36)
+bl = (0, 210)
+br = (716, 300)
+
 def get_A_matrix():
 
-    x_primes = [106, 32, 315, 315]
-    y_primes = [245, 620, 560, 118]
-    #tl bl br tr
-    x_s = [0, 0, poster_data.shape[1], poster_data.shape[1]]
-    y_s = [0, poster_data.shape[0], poster_data.shape[0], 0]
+    x_s = [tl[0], tr[0], bl[0], br[0]]
+    y_s = [tl[1], tr[1], bl[1], br[1]]
+    #TL TR BR BL
+    size_max = 300
+    x_primes = [1, size_max, 1, size_max]
+    y_primes = [1, 1, size_max, size_max]
+    # x_primes = [0 - (1-minx), 0- (1-minx), size_max- (1-minx), size_max- (1-minx)]
+    # y_primes = [0- (1-miny), size_max- (1-miny), size_max- (1-miny), 0- (1-miny)]
 
     col_1 = [x_s[i//2] if i % 2 == 0 else 0 for i in range(2*len(x_s))]
     col_2 = [y_s[i//2] if i % 2 == 0 else 0 for i in range(2*len(y_s))]
@@ -44,14 +51,8 @@ def get_A_matrix():
     # col_9 simply alternates between negative entries in x_s and y_s
     col_9 = [-x_primes[i//2] if i % 2 == 0 else -y_primes[i//2] for i in range(2*len(x_primes))]
     matrix = np.array([col_1, col_2, col_3, col_4, col_5, col_6, col_7, col_8, col_9]).transpose()
+
     return matrix
-
-
-# blank = get_poster_blank(False)
-mat = get_A_matrix()
-
-U, S, V = np.linalg.svd(mat)
-H = (V[8]).reshape((3,3))
 
 def applyhomography(A,H):
     # cast the input image to double precision floats
@@ -107,8 +108,6 @@ def applyhomography(A,H):
     return B.astype(np.uint8)
 
 
-
-
 def merge(data):
     img_data = np.array(img)
     # start coords in original image
@@ -130,13 +129,9 @@ def merge(data):
 
     Image.fromarray(img_data.astype(np.uint8)).show()
 
-poster.show()
-exit()
-trans_poster = applyhomography(poster, H)
-merge(trans_poster)
+mat = get_A_matrix()
 
-
-
-
-
-
+U, S, V = np.linalg.svd(mat)
+H = (V[8]).reshape((3,3))
+trans_poster = applyhomography(cropped, H)
+Image.fromarray(trans_poster).show()
