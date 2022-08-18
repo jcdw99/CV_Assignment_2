@@ -3,7 +3,6 @@ from PIL import Image
 
 kayak1 = Image.open('resources/kayak1.jpg')
 kayak2 = Image.open('resources/kayak2.jpg')
-
                 # Pointy     # waterfall   #tree   #crack
 kayak1_points = [(358, 211), (466,142), (384,52), (418,271)]
 kayak2_points = [(135, 259), (235, 181), (155,98), (200,307)]
@@ -45,10 +44,8 @@ def get_A_matrix():
 def applyhomography(A,H):
     # cast the input image to double precision floats
     A = np.array(A).astype(float)
-    
     # determine number of rows, columns and channels of A
-    m, n, c = A.shape
-    
+    m, n, c = A.shape 
     # determine size of output image by forward−transforming the four corners of A
     p1 = np.dot(H,np.array([0,0,1]).reshape((3,1))); p1 = p1/p1[2];
     p2 = np.dot(H,np.array([n-1, 0,1]).reshape((3,1))); p2 = p2/p2[2];
@@ -60,9 +57,7 @@ def applyhomography(A,H):
     maxy = np.ceil(np.amax([p1[1], p2[1], p3[1] ,p4[1]]));
     nn = int(maxx - minx)
     mm = int(maxy - miny)
-
     print(nn, ' by ', mm)
-
     # initialise output with white pixels
     B = np.zeros((mm,nn,c))
 

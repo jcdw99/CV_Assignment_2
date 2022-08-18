@@ -131,7 +131,6 @@ def merge(data):
     Image.fromarray(img_data.astype(np.uint8)).show()
 
 poster.show()
-exit()
 trans_poster = applyhomography(poster, H)
 merge(trans_poster)
 
