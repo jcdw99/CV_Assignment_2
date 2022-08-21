@@ -10,8 +10,9 @@ from random import sample
 # pasted = [i.copy() for i in orig_pics]
 # for i in pasted:
 #     Image.Image.paste(i, template, (0,0))
-RANSAC_THRESH = 5
-ITERS = 1000
+RANSAC_THRESH = 10
+ITERS = 3000
+
 def gen_pasted_pic(i):
     orig = Image.open('resources/fifaimages/' + str(i) + '.jpg')
     template = Image.open('resources/fifaimages/template.jpg')
@@ -89,7 +90,6 @@ def do_RANSAC(target):
         inlier_set = []
         for data_dex in range(len(data)):
             data_point = np.array(data.loc[data_dex])
-
             dest = np.dot(H, np.array([data_point[0], data_point[1], 1]))
             dest = (dest / dest[2])[:-1]
             diff = (np.linalg.norm(dest - np.array([data_point[2], data_point[3]])))
@@ -97,6 +97,7 @@ def do_RANSAC(target):
                 inlier_set.append(data_point)
         if len(inlier_set) > len(best_inlier_set):
             best_inlier_set = inlier_set
+    print(np.array(best_inlier_set))
     return np.array(best_inlier_set)
 
 
@@ -166,5 +167,5 @@ def draw_green_borders(pic, point1, point2, point3, point4, point5, point6, poin
     draw.line([point7, point5], fill='green', width=5)
 
 
-for i in range(1, 13):
-    draw_ransac_mappings(i)
+do_RANSAC(11)
+    
